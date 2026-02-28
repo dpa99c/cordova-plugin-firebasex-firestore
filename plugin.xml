@@ -55,7 +55,7 @@
                 <source url="https://cdn.cocoapods.org/"/>
             </config>
             <pods use-frameworks="true">
-                <pod name="FirebaseFirestore" spec="12.9.0"/>
+                <pod name="FirebaseFirestore" tag="12.9.0" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />
             </pods>
         </podspec>
     </platform>

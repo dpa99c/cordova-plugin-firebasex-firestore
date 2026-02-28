@@ -72,17 +72,29 @@ module.exports = function (context) {
     var pluginXmlModified = false;
 
     // Handle IOS_USE_PRECOMPILED_FIRESTORE_POD
+    var standardPodRegExp = /<pod\s+name="FirebaseFirestore"\s+spec="([^"]+)"\s*\/>/;
+    var precompiledPodRegExp = /<pod\s+name="FirebaseFirestore"\s+tag="([^"]+)"\s+git="[^"]+"\s*\/>/;
+
     if (pluginVariables["IOS_USE_PRECOMPILED_FIRESTORE_POD"] === "true") {
-        var firestorePodsRegExp = /<pod name="FirebaseFirestore" spec="(\d+\.\d+\.\d+)"\/>/;
-        var precompiledPodReplacementPattern = '<pod name="FirebaseFirestore" tag="$version$" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />';
-        var match = pluginXmlText.match(firestorePodsRegExp);
+        var match = pluginXmlText.match(standardPodRegExp);
         if (match) {
-            var precompiledPodReplacement = precompiledPodReplacementPattern.replace("$version$", match[1]);
-            pluginXmlText = pluginXmlText.replace(firestorePodsRegExp, precompiledPodReplacement);
+            var replacement = '<pod name="FirebaseFirestore" tag="' + match[1] + '" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />';
+            pluginXmlText = pluginXmlText.replace(standardPodRegExp, replacement);
             pluginXmlModified = true;
-            console.log("Replaced FirebaseFirestore pod with precompiled version in " + PLUGIN_ID + "/plugin.xml");
+            console.log("Replaced FirebaseFirestore pod with precompiled version (tag " + match[1] + ") in " + PLUGIN_ID + "/plugin.xml");
+        } else if (pluginXmlText.match(precompiledPodRegExp)) {
+            console.log("FirebaseFirestore pod already using precompiled version in " + PLUGIN_ID + "/plugin.xml");
         } else {
             console.warn('Failed to find <pod name="FirebaseFirestore"> in ' + PLUGIN_ID + "/plugin.xml");
+        }
+    } else {
+        // Restore standard pod if precompiled was previously applied
+        var preMatch = pluginXmlText.match(precompiledPodRegExp);
+        if (preMatch) {
+            var restored = '<pod name="FirebaseFirestore" spec="' + preMatch[1] + '"/>';
+            pluginXmlText = pluginXmlText.replace(precompiledPodRegExp, restored);
+            pluginXmlModified = true;
+            console.log("Restored standard FirebaseFirestore pod (spec " + preMatch[1] + ") in " + PLUGIN_ID + "/plugin.xml");
         }
     }
 
