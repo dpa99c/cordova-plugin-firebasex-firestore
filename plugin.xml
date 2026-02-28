@@ -21,7 +21,7 @@
 
     <hook type="after_prepare" src="scripts/post_install.js" />
 
-    <js-module src="www/firebasex-firestore.js" name="FirebasexFirestore">
+    <js-module src="www/firebasex-firestore.js" name="FirebasexFirestorePlugin">
         <merges target="FirebasexFirestorePlugin" />
     </js-module>
 
