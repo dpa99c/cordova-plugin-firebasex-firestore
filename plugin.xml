@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="cordova-plugin-firebasex-firestore"
+        version="1.0.0"
+        xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <name>Cordova FirebaseX Firestore</name>
+    <description>Firestore module for cordova-plugin-firebasex</description>
+    <license>MIT</license>
+    <keywords>cordova,firebase,firestore</keywords>
+
+    <engines>
+        <engine name="cordova" version=">=12.0.0" />
+        <engine name="cordova-android" version=">=14.0.0" />
+        <engine name="cordova-ios" version=">=7.0.0" />
+    </engines>
+
+    <dependency id="cordova-plugin-firebasex-core" />
+
+    <preference name="IOS_USE_PRECOMPILED_FIRESTORE_POD" default="false" />
+
+    <hook type="after_prepare" src="scripts/post_install.js" />
+
+    <js-module src="www/firebasex-firestore.js" name="FirebasexFirestore">
+        <merges target="FirebasexFirestorePlugin" />
+    </js-module>
+
+    <!-- Android -->
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="FirebasexFirestorePlugin">
+                <param name="android-package" value="org.apache.cordova.firebasex.FirebasexFirestorePlugin" />
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/FirebasexFirestorePlugin.java" target-dir="src/org/apache/cordova/firebasex" />
+        <framework src="src/android/build.gradle" custom="true" type="gradleReference" />
+    </platform>
+
+    <!-- iOS -->
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="FirebasexFirestorePlugin">
+                <param name="ios-package" value="FirebasexFirestorePlugin" />
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+
+        <header-file src="src/ios/FirebasexFirestorePlugin.h" />
+        <source-file src="src/ios/FirebasexFirestorePlugin.m" />
+
+        <podspec>
+            <config>
+                <source url="https://cdn.cocoapods.org/"/>
+            </config>
+            <pods use-frameworks="true">
+                <pod name="FirebaseFirestore" spec="12.9.0"/>
+            </pods>
+        </podspec>
+    </platform>
+</plugin>

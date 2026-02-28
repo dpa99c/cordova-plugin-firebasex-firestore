@@ -1,0 +1,11 @@
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform("com.google.firebase:firebase-bom:33.12.0")
+    implementation "com.google.firebase:firebase-firestore"
+    implementation "io.grpc:grpc-okhttp:1.75.0"
+    implementation "com.google.code.gson:gson:2.13.2"
+}
