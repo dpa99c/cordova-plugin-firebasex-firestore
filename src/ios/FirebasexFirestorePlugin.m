@@ -1,13 +1,20 @@
+/**
+ * @file FirebasexFirestorePlugin.m
+ * @brief iOS implementation of the FirebaseX Cloud Firestore Cordova plugin.
+ */
 #import "FirebasexFirestorePlugin.h"
 #import "FirebasexCorePlugin.h"
 
 @interface FirebasexFirestorePlugin ()
+/** Cloud Firestore instance. */
 @property(nonatomic, strong) FIRFirestore *firestore;
+/** Registry of active snapshot listeners keyed by generated numeric IDs. */
 @property(nonatomic, strong) NSMutableDictionary *firestoreListeners;
 @end
 
 @implementation FirebasexFirestorePlugin
 
+/** Initialises the plugin, obtaining the Firestore instance and creating the listener registry. */
 - (void)pluginInitialize {
     NSLog(@"FirebasexFirestorePlugin: pluginInitialize");
     self.firestore = [FIRFirestore firestore];
@@ -16,6 +23,7 @@
 
 #pragma mark - ID generation
 
+/** Generates a unique random numeric ID not already in use by the listener registry. */
 - (int)generateId {
     int key = -1;
     while (key < 0 || [self.firestoreListeners objectForKey:[NSNumber numberWithInt:key]] != nil) {
@@ -24,6 +32,10 @@
     return key;
 }
 
+/**
+ * Saves a listener registration and returns its generated numeric key.
+ * Thread-safe via @synchronized.
+ */
 - (NSNumber *)saveFirestoreListener:(id<FIRListenerRegistration>)firestoreListener {
     @synchronized(self.firestoreListeners) {
         int listenerId = [self generateId];
@@ -33,6 +45,12 @@
     }
 }
 
+/**
+ * Removes and detaches a Firestore listener by its numeric key.
+ * Thread-safe via @synchronized.
+ *
+ * @return YES if a listener was found and removed.
+ */
 - (bool)_removeFirestoreListener:(NSNumber *)key {
     @synchronized(self.firestoreListeners) {
         bool removed = false;
@@ -48,6 +66,11 @@
 
 #pragma mark - Data sanitization
 
+/**
+ * Recursively sanitises a Firestore data dictionary.
+ * Converts FIRDocumentReference to path strings, FIRTimestamp to seconds/nanoseconds
+ * dictionaries, and filters out NaN/Infinity values.
+ */
 - (NSMutableDictionary *)sanitiseFirestoreDataDictionary:(NSDictionary *)data {
     NSMutableDictionary *sanitisedData = [[NSMutableDictionary alloc] init];
     for (id key in data) {
@@ -58,6 +81,10 @@
     return sanitisedData;
 }
 
+/**
+ * Sanitises a single Firestore value, converting Firestore-specific types
+ * to JSON-compatible representations.
+ */
 - (id)sanitizeFirestoreData:(id)value {
     if ([value isKindOfClass:[FIRDocumentReference class]]) {
         FIRDocumentReference *reference = (FIRDocumentReference *)value;
@@ -89,6 +116,10 @@
 
 #pragma mark - Query filters
 
+/**
+ * Applies an array of filter definitions to a Firestore query.
+ * Supports where (==, <, >, <=, >=, array-contains), orderBy, startAt, endAt, and limit.
+ */
 - (FIRQuery *)applyFiltersToFirestoreCollectionQuery:(NSArray *)filters query:(FIRQuery *)query {
     for (int i = 0; i < [filters count]; i++) {
         NSArray *filter = [filters objectAtIndex:i];
@@ -140,6 +171,9 @@
     return query;
 }
 
+/**
+ * Extracts a typed value from a filter array. Supports boolean, integer, long, double, and string types.
+ */
 - (id)getFilterValueAsType:(NSArray *)filter valueIndex:(int)valueIndex typeIndex:(int)typeIndex {
     id typedValue = [filter objectAtIndex:valueIndex];
 
@@ -179,6 +213,7 @@
     return typedValue;
 }
 
+/** Checks if an NSNumber is a boolean by comparing CFTypeIDs. */
 - (BOOL)isBoolNumber:(NSNumber *)num {
     CFTypeID boolID = CFBooleanGetTypeID();
     CFTypeID numID = CFGetTypeID((__bridge CFTypeRef)(num));
@@ -187,6 +222,10 @@
 
 #pragma mark - CRUD operations
 
+/**
+ * Adds a new document with auto-generated ID to a collection.
+ * If timestamp is true, adds 'created' and 'lastUpdate' FIRTimestamp fields.
+ */
 - (void)addDocumentToFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -214,6 +253,10 @@
     }];
 }
 
+/**
+ * Creates or overwrites a document with a specific ID.
+ * If timestamp is true, adds a 'lastUpdate' FIRTimestamp field.
+ */
 - (void)setDocumentInFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -239,6 +282,10 @@
     }];
 }
 
+/**
+ * Updates specific fields of an existing document.
+ * Returns an error if the document does not exist.
+ */
 - (void)updateDocumentInFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -268,6 +315,7 @@
     }];
 }
 
+/** Deletes a document from a collection by its ID. */
 - (void)deleteDocumentFromFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -284,6 +332,7 @@
     }];
 }
 
+/** Checks whether a document exists in a collection. Returns boolean. */
 - (void)documentExistsInFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -305,6 +354,7 @@
     }];
 }
 
+/** Fetches a single document by ID and returns its sanitised data. */
 - (void)fetchDocumentInFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -336,6 +386,10 @@
 
 #pragma mark - Collection queries
 
+/**
+ * Fetches all documents in a collection with optional filters.
+ * Returns a dictionary mapping document IDs to their sanitised data.
+ */
 - (void)fetchFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -373,6 +427,10 @@
 
 #pragma mark - Listeners
 
+/**
+ * Registers a real-time listener on a single document.
+ * First sends the listener ID, then sends change events with snapshot, source, and fromCache.
+ */
 - (void)listenToDocumentInFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -419,6 +477,11 @@
     }];
 }
 
+/**
+ * Registers a real-time listener on a collection with optional filters.
+ * First sends the listener ID, then sends change events with document change types
+ * ("new", "modified", "removed"), snapshots, source, and fromCache.
+ */
 - (void)listenToFirestoreCollection:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {
@@ -492,6 +555,7 @@
     }];
 }
 
+/** Removes a previously registered Firestore snapshot listener by its numeric ID. */
 - (void)removeFirestoreListener:(CDVInvokedUrlCommand *)command {
     [self.commandDelegate runInBackground:^{
         @try {

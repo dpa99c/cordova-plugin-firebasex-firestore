@@ -41,20 +41,45 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 
+/**
+ * Cordova plugin for Cloud Firestore on Android.
+ *
+ * <p>Provides CRUD operations on documents and collections, compound queries
+ * with where/orderBy/startAt/endAt/limit filters, and real-time snapshot
+ * listeners with change tracking.
+ *
+ * @see <a href="https://firebase.google.com/docs/firestore">Cloud Firestore</a>
+ */
 public class FirebasexFirestorePlugin extends CordovaPlugin {
 
+    /** Log tag for all messages from this plugin. */
     private static final String TAG = "FirebasexFirestore";
 
+    /** Cloud Firestore instance. */
     private FirebaseFirestore firestore;
+
+    /** Registry of active snapshot listeners keyed by generated string IDs. */
     private Map<String, ListenerRegistration> firestoreListeners = new HashMap<String, ListenerRegistration>();
+
+    /** Gson instance for JSON-Map conversions. */
     private Gson gson = new Gson();
 
+    /** Initialises the plugin and obtains the Firestore instance. */
     @Override
     protected void pluginInitialize() {
         Log.d(TAG, "pluginInitialize");
         firestore = FirebaseFirestore.getInstance();
     }
 
+    /**
+     * Dispatches Cordova actions to plugin methods.
+     *
+     * <p>Supported actions: addDocumentToFirestoreCollection, setDocumentInFirestoreCollection,
+     * updateDocumentInFirestoreCollection, deleteDocumentFromFirestoreCollection,
+     * documentExistsInFirestoreCollection, fetchDocumentInFirestoreCollection,
+     * fetchFirestoreCollection, listenToDocumentInFirestoreCollection,
+     * listenToFirestoreCollection, removeFirestoreListener.
+     */
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         switch (action) {
@@ -93,16 +118,19 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         }
     }
 
+    /** Converts a boolean to an integer for Cordova plugin results (1 = true, 0 = false). */
     private int conformBooleanForPluginResult(boolean value) {
         return value ? 1 : 0;
     }
 
+    /** Sends a JSON result to the JS callback while keeping the callback alive for further events. */
     private void sendPluginResultAndKeepCallback(JSONObject result, CallbackContext callbackContext) {
         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, result);
         pluginResult.setKeepCallback(true);
         callbackContext.sendPluginResult(pluginResult);
     }
 
+    /** Generates a random numeric ID string for listener registration. */
     private String generateId() {
         Random r = new Random();
         return Integer.toString(r.nextInt(1000 + 1));
@@ -110,16 +138,22 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
 
     // Firestore data conversion helpers
 
+    /** Deserialises a JSON string into a Map using Gson. */
     private Map<String, Object> jsonStringToMap(String jsonString) throws JSONException {
         Type type = new TypeToken<Map<String, Object>>() {}.getType();
         return gson.fromJson(jsonString, type);
     }
 
+    /** Sanitises a Firestore data map and converts it to a JSONObject. */
     private JSONObject mapFirestoreDataToJsonObject(Map<String, Object> map) throws JSONException {
         map = sanitiseFirestoreHashMap(map);
         return mapToJsonObject(map);
     }
 
+    /**
+     * Recursively sanitises Firestore-specific types in a HashMap.
+     * Converts {@link DocumentReference} values to their path strings.
+     */
     private Map<String, Object> sanitiseFirestoreHashMap(Map<String, Object> map) {
         Set<String> keys = map.keySet();
         for (String key : keys) {
@@ -133,6 +167,7 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         return map;
     }
 
+    /** Converts a Map to a JSONObject via Gson serialisation. */
     private JSONObject mapToJsonObject(Map<String, Object> map) throws JSONException {
         String jsonString = gson.toJson(map);
         return new JSONObject(jsonString);
@@ -140,12 +175,24 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
 
     // Firestore listener management
 
+    /**
+     * Saves a listener registration and returns a generated ID.
+     *
+     * @param listenerRegistration the Firestore listener to store
+     * @return the generated string ID for later removal
+     */
     private String saveFirestoreListener(ListenerRegistration listenerRegistration) {
         String id = this.generateId();
         this.firestoreListeners.put(id, listenerRegistration);
         return id;
     }
 
+    /**
+     * Removes and detaches a Firestore listener by its ID.
+     *
+     * @param id the listener ID
+     * @return {@code true} if a listener was found and removed
+     */
     private boolean removeFirestoreListenerById(String id) {
         boolean removed = false;
         if (this.firestoreListeners.containsKey(id)) {
@@ -161,6 +208,21 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
 
     // Query filter helpers
 
+    /**
+     * Applies an array of filter definitions to a Firestore query.
+     *
+     * <p>Supported filter types:
+     * <ul>
+     *   <li>{@code ["where", fieldName, operator, value, type]} — <, >, <=, >=, ==, array-contains</li>
+     *   <li>{@code ["orderBy", fieldName, direction]} — direction: "asc" or "desc"</li>
+     *   <li>{@code ["startAt", value, type]} / {@code ["endAt", value, type]}</li>
+     *   <li>{@code ["limit", count]}</li>
+     * </ul>
+     *
+     * @param filters the JSON array of filter arrays
+     * @param query the base query to apply filters to
+     * @return the filtered query
+     */
     private Query applyFiltersToFirestoreCollectionQuery(JSONArray filters, Query query) throws JSONException {
         for (int i = 0; i < filters.length(); i++) {
             JSONArray filter = filters.getJSONArray(i);
@@ -209,6 +271,15 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         return query;
     }
 
+    /**
+     * Extracts a typed value from a filter array for use in Firestore queries.
+     * Supports types: boolean, integer, double, long, and string (default).
+     *
+     * @param filter the filter array
+     * @param valueIndex index of the value element
+     * @param typeIndex index of the type element
+     * @return the typed value
+     */
     private Object getFilterValueAsType(JSONArray filter, int valueIndex, int typeIndex) throws JSONException {
         Object typedValue;
         String type = "string";
@@ -238,6 +309,11 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
 
     // CRUD operations
 
+    /**
+     * Adds a new document with an auto-generated ID to a collection.
+     * If timestamp is true, adds {@code created} and {@code lastUpdate} Timestamp fields.
+     * Returns the generated document ID on success.
+     */
     private void addDocumentToFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -274,6 +350,10 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /**
+     * Creates or overwrites a document with a specific ID in a collection.
+     * If timestamp is true, adds a {@code lastUpdate} Timestamp field.
+     */
     private void setDocumentInFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -310,6 +390,10 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /**
+     * Updates specific fields of an existing document. Fails if the document does not exist.
+     * If timestamp is true, updates the {@code lastUpdate} Timestamp field.
+     */
     private void updateDocumentInFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -346,6 +430,7 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /** Deletes a document from a collection by its ID. */
     private void deleteDocumentFromFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -374,6 +459,7 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /** Checks whether a document exists in a collection. Returns 1 or 0. */
     private void documentExistsInFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -414,6 +500,7 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /** Fetches a single document by ID and returns its data as a JSON object. */
     private void fetchDocumentInFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -461,6 +548,10 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
 
     // Collection fetch and query
 
+    /**
+     * Fetches all documents in a collection, optionally filtered.
+     * Returns a JSON object mapping document IDs to their data.
+     */
     private void fetchFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -501,6 +592,13 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
 
     // Listeners
 
+    /**
+     * Registers a real-time listener on a single document.
+     *
+     * <p>First sends an {@code {eventType: "id", id: ...}} result with the listener ID,
+     * then sends {@code {eventType: "change", snapshot: ..., source: "local"|"remote", fromCache: ...}}
+     * on each document change. Uses keepCallback to maintain the callback.
+     */
     private void listenToDocumentInFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -549,6 +647,12 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /**
+     * Registers a real-time listener on an entire collection, optionally filtered.
+     *
+     * <p>First sends the listener ID, then sends change events. Each document change
+     * includes its type ("new", "modified", "removed"), snapshot data, source, and fromCache flag.
+     */
     private void listenToFirestoreCollection(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -629,6 +733,7 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
         });
     }
 
+    /** Removes a previously registered Firestore snapshot listener by its ID. */
     private void removeFirestoreListener(JSONArray args, CallbackContext callbackContext) throws JSONException {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
