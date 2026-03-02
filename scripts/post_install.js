@@ -1,8 +1,38 @@
+/**
+ * @file post_install.js
+ * @brief Cordova "after_prepare" hook for the cordova-plugin-firebasex-firestore plugin.
+ *
+ * Modifies the plugin's `plugin.xml` to switch between the standard and precompiled
+ * FirebaseFirestore iOS pods based on the `IOS_USE_PRECOMPILED_FIRESTORE_POD` plugin variable.
+ *
+ * When enabled, the standard `FirebaseFirestore` pod (installed from CocoaPods) is replaced
+ * with the precompiled version from the `invertase/firestore-ios-sdk-frameworks` GitHub
+ * repository, which significantly reduces iOS build times.
+ *
+ * When disabled (or not set), restores the standard CocoaPods-based pod if the precompiled
+ * version was previously applied.
+ *
+ * Plugin variables are resolved using a 3-layer override strategy:
+ * 1. Defaults from `plugin.xml` `<preference>` elements.
+ * 2. Overrides from `config.xml` `<plugin><variable>` elements.
+ * 3. Overrides from `package.json` `cordova.plugins` entries (highest priority).
+ *
+ * @module scripts/post_install
+ */
 var fs = require("fs");
 var path = require("path");
 
+/** @constant {string} The plugin identifier. */
 var PLUGIN_ID = "cordova-plugin-firebasex-firestore";
 
+/**
+ * Resolves plugin variables using a 3-layer override strategy:
+ * 1. Default values from `plugin.xml` `<preference>` elements.
+ * 2. Overrides from `config.xml` `<plugin><variable>` elements.
+ * 3. Overrides from `package.json` `cordova.plugins` entries (highest priority).
+ *
+ * @returns {Object} Resolved plugin variable key/value pairs.
+ */
 function getPluginVariables() {
     var variables = {};
 
@@ -59,6 +89,15 @@ function getPluginVariables() {
     return variables;
 }
 
+/**
+ * Cordova hook entry point.
+ *
+ * Reads plugin variables, then either replaces the standard FirebaseFirestore pod
+ * with the precompiled version (if `IOS_USE_PRECOMPILED_FIRESTORE_POD` is `true`)
+ * or restores the standard pod (if the precompiled version was previously applied).
+ *
+ * @param {object} context - The Cordova hook context.
+ */
 module.exports = function (context) {
     var pluginVariables = getPluginVariables();
     var pluginXmlPath = path.join("plugins", PLUGIN_ID, "plugin.xml");
@@ -72,8 +111,10 @@ module.exports = function (context) {
     var pluginXmlModified = false;
 
     // Handle IOS_USE_PRECOMPILED_FIRESTORE_POD
+    /** @constant {RegExp} Matches the standard CocoaPods-based FirebaseFirestore pod entry. */
     var standardPodRegExp = /<pod\s+name="FirebaseFirestore"\s+spec="([^"]+)"\s*\/>/;
-    var precompiledPodRegExp = /<pod\s+name="FirebaseFirestore"\s+tag="([^"]+)"\s+git="[^"]+"\s*\/>/;
+    /** @constant {RegExp} Matches the precompiled FirebaseFirestore pod entry (from invertase git repo). */
+    var precompiledPodRegExp = /<pod\s+name="FirebaseFirestore"\s+tag="([^"]+)"\s+git="[^"]+"\s*\/>/;;
 
     if (pluginVariables["IOS_USE_PRECOMPILED_FIRESTORE_POD"] === "true") {
         var match = pluginXmlText.match(standardPodRegExp);
