@@ -17,6 +17,10 @@
  * 2. Overrides from `config.xml` `<plugin><variable>` elements.
  * 3. Overrides from `package.json` `cordova.plugins` entries (highest priority).
  *
+ * For layers 2 and 3, variables are checked under both the wrapper meta-plugin ID
+ * (`cordova-plugin-firebasex`) and this plugin's own ID, allowing users who install
+ * via the wrapper to specify variables under the original monolithic plugin name.
+ *
  * @module scripts/post_install
  */
 var fs = require("fs");
@@ -24,6 +28,8 @@ var path = require("path");
 
 /** @constant {string} The plugin identifier. */
 var PLUGIN_ID = "cordova-plugin-firebasex-firestore";
+/** @constant {string} The wrapper meta-plugin identifier used as a fallback source for plugin variables. */
+var WRAPPER_PLUGIN_ID = "cordova-plugin-firebasex";
 
 /**
  * Resolves plugin variables using a 3-layer override strategy:
@@ -51,35 +57,41 @@ function getPluginVariables() {
         console.warn("Could not read plugin.xml: " + e.message);
     }
 
-    // Override with values from config.xml
+    // Override with values from config.xml (check both wrapper and own plugin ID)
     try {
         var configXmlPath = path.join("config.xml");
         if (fs.existsSync(configXmlPath)) {
             var configXml = fs.readFileSync(configXmlPath, "utf-8");
-            var pluginRegex = new RegExp('<plugin[^>]+name="' + PLUGIN_ID + '"[^>]*>(.*?)</plugin>', "s");
-            var pluginMatch = configXml.match(pluginRegex);
-            if (pluginMatch) {
-                var varRegex = /<variable\s+name="([^"]+)"\s+value="([^"]+)"\s*\/>/g;
-                var varMatch;
-                while ((varMatch = varRegex.exec(pluginMatch[1])) !== null) {
-                    variables[varMatch[1]] = varMatch[2];
+            [WRAPPER_PLUGIN_ID, PLUGIN_ID].forEach(function(pluginId) {
+                var pluginRegex = new RegExp('<plugin[^>]+name="' + pluginId + '"[^>]*>(.*?)</plugin>', "s");
+                var pluginMatch = configXml.match(pluginRegex);
+                if (pluginMatch) {
+                    var varRegex = /<variable\s+name="([^"]+)"\s+value="([^"]+)"\s*\/>/g;
+                    var varMatch;
+                    while ((varMatch = varRegex.exec(pluginMatch[1])) !== null) {
+                        variables[varMatch[1]] = varMatch[2];
+                    }
                 }
-            }
+            });
         }
     } catch (e) {
         console.warn("Could not read config.xml: " + e.message);
     }
 
-    // Override with values from package.json
+    // Override with values from package.json (check wrapper first as base, then own plugin)
     try {
         var packageJsonPath = path.join("package.json");
         if (fs.existsSync(packageJsonPath)) {
             var packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-            if (packageJson.cordova && packageJson.cordova.plugins && packageJson.cordova.plugins[PLUGIN_ID]) {
-                var pluginVars = packageJson.cordova.plugins[PLUGIN_ID];
-                for (var key in pluginVars) {
-                    variables[key] = pluginVars[key];
-                }
+            if (packageJson.cordova && packageJson.cordova.plugins) {
+                [WRAPPER_PLUGIN_ID, PLUGIN_ID].forEach(function(pluginId) {
+                    if (packageJson.cordova.plugins[pluginId]) {
+                        var pluginVars = packageJson.cordova.plugins[pluginId];
+                        for (var key in pluginVars) {
+                            variables[key] = pluginVars[key];
+                        }
+                    }
+                });
             }
         }
     } catch (e) {
