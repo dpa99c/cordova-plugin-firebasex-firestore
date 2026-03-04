@@ -1,4 +1,4 @@
-interface FirebasexFirestorePlugin {
+interface FirebasexFirestore {
     addDocumentToFirestoreCollection(
         document: object,
         collection: string,

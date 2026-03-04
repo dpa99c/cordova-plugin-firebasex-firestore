@@ -52,6 +52,10 @@ Or in your `config.xml`:
 
 | Variable | Default | Description |
 |---|---|---|
+| `ANDROID_FIREBASE_FIRESTORE_VERSION` | `26.1.0` | Android Firebase Firestore SDK version. |
+| `ANDROID_GRPC_OKHTTP` | `1.75.0` | Android gRPC OkHttp version (Firestore dependency). |
+| `ANDROID_GSON_VERSION` | `2.13.2` | Google Gson library version (Firestore dependency). |
+| `IOS_FIREBASE_SDK_VERSION` | `12.9.0` | iOS Firebase SDK version (for firestore pod). |
 | `IOS_USE_PRECOMPILED_FIRESTORE_POD` | `false` | Use precompiled Firestore pod for faster iOS builds. See [Precompiled Firestore Pod](#precompiled-firestore-pod-ios) below. |
 
 ### Precompiled Firestore Pod (iOS)
@@ -64,7 +68,7 @@ cordova plugin add cordova-plugin-firebasex-firestore --variable IOS_USE_PRECOMP
 
 # API
 
-The following methods are available via the `FirebasexFirestorePlugin` global object.
+The following methods are available via the `FirebasexFirestore` global object.
 
 These API functions provide CRUD operations for working with documents in Firestore collections.
 
@@ -99,7 +103,7 @@ var document = {
 var collection = "my_collection";
 
 // with timestamp
-FirebasexFirestorePlugin.addDocumentToFirestoreCollection(
+FirebasexFirestore.addDocumentToFirestoreCollection(
     document,
     collection,
     true,
@@ -112,7 +116,7 @@ FirebasexFirestorePlugin.addDocumentToFirestoreCollection(
 );
 
 // without timestamp
-FirebasexFirestorePlugin.addDocumentToFirestoreCollection(
+FirebasexFirestore.addDocumentToFirestoreCollection(
     document,
     collection,
     function (documentId) {
@@ -149,7 +153,7 @@ var document = {
 var collection = "my_collection";
 
 // with timestamp
-FirebasexFirestorePlugin.setDocumentInFirestoreCollection(
+FirebasexFirestore.setDocumentInFirestoreCollection(
     documentId,
     document,
     collection,
@@ -163,7 +167,7 @@ FirebasexFirestorePlugin.setDocumentInFirestoreCollection(
 );
 
 // without timestamp
-FirebasexFirestorePlugin.setDocumentInFirestoreCollection(
+FirebasexFirestore.setDocumentInFirestoreCollection(
     documentId,
     document,
     collection,
@@ -200,7 +204,7 @@ var documentFragment = {
 var collection = "my_collection";
 
 // with timestamp
-FirebasexFirestorePlugin.updateDocumentInFirestoreCollection(
+FirebasexFirestore.updateDocumentInFirestoreCollection(
     documentId,
     documentFragment,
     collection,
@@ -214,7 +218,7 @@ FirebasexFirestorePlugin.updateDocumentInFirestoreCollection(
 );
 
 // without timestamp
-FirebasexFirestorePlugin.updateDocumentInFirestoreCollection(
+FirebasexFirestore.updateDocumentInFirestoreCollection(
     documentId,
     documentFragment,
     collection,
@@ -243,7 +247,7 @@ Note: If the no document with the specified ID exists in the collection, the Fir
 ```javascript
 var documentId = "my_doc";
 var collection = "my_collection";
-FirebasexFirestorePlugin.deleteDocumentFromFirestoreCollection(
+FirebasexFirestore.deleteDocumentFromFirestoreCollection(
     documentId,
     collection,
     function () {
@@ -270,7 +274,7 @@ Indicates if a document with the given ID exists in a Firestore collection.
 ```javascript
 var documentId = "my_doc";
 var collection = "my_collection";
-FirebasexFirestorePlugin.documentExistsInFirestoreCollection(
+FirebasexFirestore.documentExistsInFirestoreCollection(
     documentId,
     collection,
     function (exists) {
@@ -302,7 +306,7 @@ Notes:
 ```javascript
 var documentId = "my_doc";
 var collection = "my_collection";
-FirebasexFirestorePlugin.fetchDocumentInFirestoreCollection(
+FirebasexFirestore.fetchDocumentInFirestoreCollection(
     documentId,
     collection,
     function (document) {
@@ -370,7 +374,7 @@ var filters = [
     ["limit", 100000],
 ];
 
-FirebasexFirestorePlugin.fetchFirestoreCollection(
+FirebasexFirestore.fetchFirestoreCollection(
     collection,
     filters,
     function (documents) {
@@ -443,7 +447,7 @@ var collection = "my_collection";
 var includeMetadata = true;
 var listenerId;
 
-FirebasexFirestorePlugin.listenToDocumentInFirestoreCollection(
+FirebasexFirestore.listenToDocumentInFirestoreCollection(
     function (event) {
         switch (event.eventType) {
             case "id":
@@ -555,7 +559,7 @@ var filters = [
 var includeMetadata = true;
 var listenerId;
 
-FirebasexFirestorePlugin.listenToFirestoreCollection(
+FirebasexFirestore.listenToFirestoreCollection(
     function (event) {
         switch (event.eventType) {
             case "id":
@@ -621,7 +625,7 @@ You should remove listeners when you're not using them as while active they main
 -   {string|number} listenerId - ID of the listener to remove
 
 ```javascript
-FirebasexFirestorePlugin.removeFirestoreListener(
+FirebasexFirestore.removeFirestoreListener(
     function () {
         console.log("Successfully removed listener");
     },

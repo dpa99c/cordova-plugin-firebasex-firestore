@@ -22,7 +22,7 @@
     <hook type="after_prepare" src="scripts/post_install.js" />
 
     <js-module src="www/firebasex-firestore.js" name="FirebasexFirestorePlugin">
-        <merges target="FirebasexFirestorePlugin" />
+        <merges target="FirebasexFirestore" />
     </js-module>
 
     <!-- Android -->
@@ -34,8 +34,14 @@
             </feature>
         </config-file>
 
+        <preference name="ANDROID_FIREBASE_FIRESTORE_VERSION" default="26.1.0" />
+        <preference name="ANDROID_GRPC_OKHTTP" default="1.75.0" />
+        <preference name="ANDROID_GSON_VERSION" default="2.13.2" />
+
         <source-file src="src/android/FirebasexFirestorePlugin.java" target-dir="src/org/apache/cordova/firebasex" />
-        <framework src="src/android/build.gradle" custom="true" type="gradleReference" />
+        <framework src="com.google.firebase:firebase-firestore:$ANDROID_FIREBASE_FIRESTORE_VERSION" />
+        <framework src="io.grpc:grpc-okhttp:$ANDROID_GRPC_OKHTTP" />
+        <framework src="com.google.code.gson:gson:$ANDROID_GSON_VERSION" />
     </platform>
 
     <!-- iOS -->
@@ -50,12 +56,14 @@
         <header-file src="src/ios/FirebasexFirestorePlugin.h" />
         <source-file src="src/ios/FirebasexFirestorePlugin.m" />
 
+        <preference name="IOS_FIREBASE_SDK_VERSION" default="12.9.0" />
+
         <podspec>
             <config>
                 <source url="https://cdn.cocoapods.org/"/>
             </config>
             <pods use-frameworks="true">
-                <pod name="FirebaseFirestore" tag="12.9.0" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />
+                <pod name="FirebaseFirestore" tag="$IOS_FIREBASE_SDK_VERSION" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />
             </pods>
         </podspec>
     </platform>
