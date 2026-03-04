@@ -1,8 +1,8 @@
-# cordova-plugin-firebasex-firestore
-
-[![npm version](https://img.shields.io/npm/v/cordova-plugin-firebasex-firestore.svg)](https://www.npmjs.com/package/cordova-plugin-firebasex-firestore)
+# cordova-plugin-firebasex-firestore [![Latest Stable Version](https://img.shields.io/npm/v/cordova-plugin-firebasex-firestore.svg)](https://www.npmjs.com/package/cordova-plugin-firebasex-firestore)
 
 Firebase Firestore module for the [modular FirebaseX Cordova plugin suite](https://github.com/dpa99c/cordova-plugin-firebasex#modular-plugins).
+
+This plugin wraps the [Firebase Firestore SDK](https://firebase.google.com/docs/reference/js/firebase.firestore) and provides methods to read and write data, listen to real-time updates, and control Firestore data collection in your Cordova app.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
