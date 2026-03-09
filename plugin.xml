@@ -63,8 +63,10 @@
                 <source url="https://cdn.cocoapods.org/"/>
             </config>
             <pods use-frameworks="true">
-                <pod name="FirebaseFirestore" tag="$IOS_FIREBASE_SDK_VERSION" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />
+                <pod name="FirebaseFirestore" tag="12.9.0" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />
             </pods>
         </podspec>
+
+        <hook type="after_plugin_install" src="scripts/ios/after_plugin_install.js" />
     </platform>
 </plugin>
