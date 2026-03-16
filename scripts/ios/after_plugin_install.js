@@ -57,6 +57,8 @@ function resolvePluginVariables(context) {
                     }
                 }
             });
+        } else {
+            console.warn("[FirebasexFirestore] config.xml not found at " + configXmlPath + ". Cannot read plugin variables from config.xml.");
         }
     } catch (e) {
         console.warn("[FirebasexFirestore] Could not read config.xml for plugin variables: " + e.message);
@@ -77,6 +79,8 @@ function resolvePluginVariables(context) {
                     }
                 });
             }
+        } else {
+            console.warn("[FirebasexFirestore] package.json not found at " + packageJsonPath + ". Cannot read plugin variables from package.json.");
         }
     } catch (e) {
         console.warn("[FirebasexFirestore] Could not read package.json for plugin variables: " + e.message);
@@ -100,11 +104,17 @@ function resolvePluginVariables(context) {
  */
 module.exports = function(context) {
     var pluginVariables = resolvePluginVariables(context);
-    if (!pluginVariables["IOS_FIREBASE_SDK_VERSION"]) return;
+    if (!pluginVariables["IOS_FIREBASE_SDK_VERSION"]){
+        console.warn("[FirebasexFirestore] IOS_FIREBASE_SDK_VERSION variable not set. Skipping Podfile update for FirebaseFirestore pod version.");
+        return;
+    }
 
     var iosPlatformPath = path.join(context.opts.projectRoot, "platforms", "ios");
     var podFilePath = path.join(iosPlatformPath, "Podfile");
-    if (!fs.existsSync(podFilePath)) return;
+    if (!fs.existsSync(podFilePath)) {
+        console.warn("[FirebasexFirestore] Podfile not found at " + podFilePath + ". Cannot update FirebaseFirestore pod version.");
+        return;
+    }
 
     try {
         var podFileContents = fs.readFileSync(podFilePath, "utf-8");
