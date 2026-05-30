@@ -45,7 +45,7 @@
     </platform>
 
     <!-- iOS -->
-    <platform name="ios">
+    <platform name="ios" package="swift">
         <config-file target="config.xml" parent="/*">
             <feature name="FirebasexFirestorePlugin">
                 <param name="ios-package" value="FirebasexFirestorePlugin" />
@@ -63,7 +63,7 @@
                 <source url="https://cdn.cocoapods.org/"/>
             </config>
             <pods use-frameworks="true">
-                <pod name="FirebaseFirestore" tag="12.9.0" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />
+                <pod name="FirebaseFirestore" spec="12.9.0" nospm="true" />
             </pods>
         </podspec>
 

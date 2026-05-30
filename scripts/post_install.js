@@ -5,9 +5,10 @@
  * Modifies the plugin's `plugin.xml` to switch between the standard and precompiled
  * FirebaseFirestore iOS pods based on the `IOS_USE_PRECOMPILED_FIRESTORE_POD` plugin variable.
  *
- * When enabled, the standard `FirebaseFirestore` pod (installed from CocoaPods) is replaced
+ * When enabled, the standard `FirebaseFirestore` CocoaPods fallback dependency is replaced
  * with the precompiled version from the `invertase/firestore-ios-sdk-frameworks` GitHub
- * repository, which significantly reduces iOS build times.
+ * repository. Swift Package Manager builds ignore this setting and always use the upstream
+ * Firebase package.
  *
  * When disabled (or not set), restores the standard CocoaPods-based pod if the precompiled
  * version was previously applied.
@@ -124,14 +125,15 @@ module.exports = function (context) {
 
     // Handle IOS_USE_PRECOMPILED_FIRESTORE_POD
     /** @constant {RegExp} Matches the standard CocoaPods-based FirebaseFirestore pod entry. */
-    var standardPodRegExp = /<pod\s+name="FirebaseFirestore"\s+spec="([^"]+)"\s*\/>/;
+    var standardPodRegExp = /<pod\s+name="FirebaseFirestore"\s+spec="([^"]+)"\s+nospm="true"\s*\/>/;
     /** @constant {RegExp} Matches the precompiled FirebaseFirestore pod entry (from invertase git repo). */
-    var precompiledPodRegExp = /<pod\s+name="FirebaseFirestore"\s+tag="([^"]+)"\s+git="[^"]+"\s*\/>/;;
+    var precompiledPodRegExp = /<pod\s+name="FirebaseFirestore"\s+tag="([^"]+)"\s+git="[^"]+"\s+nospm="true"\s*\/>/;
 
     if (pluginVariables["IOS_USE_PRECOMPILED_FIRESTORE_POD"] === "true") {
+        console.warn("IOS_USE_PRECOMPILED_FIRESTORE_POD only affects CocoaPods fallback installs; Swift Package Manager builds ignore it.");
         var match = pluginXmlText.match(standardPodRegExp);
         if (match) {
-            var replacement = '<pod name="FirebaseFirestore" tag="' + match[1] + '" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" />';
+            var replacement = '<pod name="FirebaseFirestore" tag="' + match[1] + '" git="https://github.com/invertase/firestore-ios-sdk-frameworks.git" nospm="true" />';
             pluginXmlText = pluginXmlText.replace(standardPodRegExp, replacement);
             pluginXmlModified = true;
             console.log("Replaced FirebaseFirestore pod with precompiled version (tag " + match[1] + ") in " + PLUGIN_ID + "/plugin.xml");
@@ -144,7 +146,7 @@ module.exports = function (context) {
         // Restore standard pod if precompiled was previously applied
         var preMatch = pluginXmlText.match(precompiledPodRegExp);
         if (preMatch) {
-            var restored = '<pod name="FirebaseFirestore" spec="' + preMatch[1] + '"/>';
+            var restored = '<pod name="FirebaseFirestore" spec="' + preMatch[1] + '" nospm="true" />';
             pluginXmlText = pluginXmlText.replace(precompiledPodRegExp, restored);
             pluginXmlModified = true;
             console.log("Restored standard FirebaseFirestore pod (spec " + preMatch[1] + ") in " + PLUGIN_ID + "/plugin.xml");

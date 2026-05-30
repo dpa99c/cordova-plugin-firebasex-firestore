@@ -22,6 +22,12 @@ var PLUGIN_ID = "cordova-plugin-firebasex-firestore";
 /** @constant {string} The wrapper meta-plugin identifier used as a fallback source for plugin variables. */
 var WRAPPER_PLUGIN_ID = "cordova-plugin-firebasex";
 
+function isSwiftPackageManagerEnabled(projectRoot) {
+    var iosPlatformPath = path.join(projectRoot, "platforms", "ios");
+    var appSubDirPath = path.join(iosPlatformPath, "App");
+    return fs.existsSync(appSubDirPath) && fs.statSync(appSubDirPath).isDirectory();
+}
+
 /**
  * Resolves plugin variables using the 4-layer override strategy.
  *
@@ -96,6 +102,30 @@ function resolvePluginVariables(context) {
     return pluginVariables;
 }
 
+function getPackageSwiftPaths(context) {
+    var paths = [
+        path.resolve(__dirname, "..", "..", "Package.swift"),
+        path.join(context.opts.projectRoot, "plugins", PLUGIN_ID, "Package.swift")
+    ];
+
+    return paths.filter(function(packageSwiftPath, index) {
+        return fs.existsSync(packageSwiftPath) && paths.indexOf(packageSwiftPath) === index;
+    });
+}
+
+function rewritePackageSwiftValue(packageSwiftContents, key, value) {
+    var packageValueRegex = new RegExp("let " + key + "(?:\\s*:\\s*Version)? = \\\"[^\\\"]+\\\"");
+    if (!packageValueRegex.test(packageSwiftContents)) {
+        return { contents: packageSwiftContents, modified: false };
+    }
+
+    var updatedContents = packageSwiftContents.replace(packageValueRegex, function(match) {
+        return match.replace(/\"[^\"]+\"/, '"' + value + '"');
+    });
+
+    return { contents: updatedContents, modified: updatedContents !== packageSwiftContents };
+}
+
 /**
  * Cordova hook entry point.
  * Updates the FirebaseFirestore git pod tag in the Podfile.
@@ -104,8 +134,23 @@ function resolvePluginVariables(context) {
  */
 module.exports = function(context) {
     var pluginVariables = resolvePluginVariables(context);
+    var useSwiftPackageManager = isSwiftPackageManagerEnabled(context.opts.projectRoot);
+    if (useSwiftPackageManager) {
+        getPackageSwiftPaths(context).forEach(function(packageSwiftPath) {
+            var packageSwiftContents = fs.readFileSync(packageSwiftPath, "utf-8");
+            var result = rewritePackageSwiftValue(packageSwiftContents, "firebaseSDKVersion", pluginVariables["IOS_FIREBASE_SDK_VERSION"]);
+            if (result.modified) {
+                fs.writeFileSync(packageSwiftPath, result.contents);
+            }
+        });
+    }
+
     if (!pluginVariables["IOS_FIREBASE_SDK_VERSION"]){
         console.warn("[FirebasexFirestore] IOS_FIREBASE_SDK_VERSION variable not set. Skipping Podfile update for FirebaseFirestore pod version.");
+        return;
+    }
+
+    if (useSwiftPackageManager) {
         return;
     }
 
