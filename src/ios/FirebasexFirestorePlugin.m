@@ -3,7 +3,7 @@
  * @brief iOS implementation of the FirebaseX Cloud Firestore Cordova plugin.
  */
 #import "FirebasexFirestorePlugin.h"
-#import "FirebasexCorePlugin.h"
+@import cordova_plugin_firebasex_core;
 
 @interface FirebasexFirestorePlugin ()
 /** Cloud Firestore instance. */

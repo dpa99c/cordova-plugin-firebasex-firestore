@@ -114,6 +114,10 @@ function getPackageSwiftPaths(context) {
 }
 
 function rewritePackageSwiftValue(packageSwiftContents, key, value) {
+    if (!value) {
+        return { contents: packageSwiftContents, modified: false };
+    }
+
     var packageValueRegex = new RegExp("let " + key + "(?:\\s*:\\s*Version)? = \\\"[^\\\"]+\\\"");
     if (!packageValueRegex.test(packageSwiftContents)) {
         return { contents: packageSwiftContents, modified: false };
@@ -135,6 +139,11 @@ function rewritePackageSwiftValue(packageSwiftContents, key, value) {
 module.exports = function(context) {
     var pluginVariables = resolvePluginVariables(context);
     var useSwiftPackageManager = isSwiftPackageManagerEnabled(context.opts.projectRoot);
+    if (!pluginVariables["IOS_FIREBASE_SDK_VERSION"]) {
+        console.warn("[FirebasexFirestore] IOS_FIREBASE_SDK_VERSION variable not set. Skipping iOS dependency version update.");
+        return;
+    }
+
     if (useSwiftPackageManager) {
         getPackageSwiftPaths(context).forEach(function(packageSwiftPath) {
             var packageSwiftContents = fs.readFileSync(packageSwiftPath, "utf-8");
@@ -143,14 +152,6 @@ module.exports = function(context) {
                 fs.writeFileSync(packageSwiftPath, result.contents);
             }
         });
-    }
-
-    if (!pluginVariables["IOS_FIREBASE_SDK_VERSION"]){
-        console.warn("[FirebasexFirestore] IOS_FIREBASE_SDK_VERSION variable not set. Skipping Podfile update for FirebaseFirestore pod version.");
-        return;
-    }
-
-    if (useSwiftPackageManager) {
         return;
     }
 
