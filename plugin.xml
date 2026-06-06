@@ -34,9 +34,9 @@
             </feature>
         </config-file>
 
-        <preference name="ANDROID_FIREBASE_FIRESTORE_VERSION" default="26.1.0" />
-        <preference name="ANDROID_GRPC_OKHTTP" default="1.75.0" />
-        <preference name="ANDROID_GSON_VERSION" default="2.13.2" />
+        <preference name="ANDROID_FIREBASE_FIRESTORE_VERSION" default="26.3.0" />
+        <preference name="ANDROID_GRPC_OKHTTP" default="1.81.0" />
+        <preference name="ANDROID_GSON_VERSION" default="2.14.0" />
 
         <source-file src="src/android/FirebasexFirestorePlugin.java" target-dir="src/org/apache/cordova/firebasex" />
         <framework src="com.google.firebase:firebase-firestore:$ANDROID_FIREBASE_FIRESTORE_VERSION" />
