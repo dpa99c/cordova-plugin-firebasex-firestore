@@ -1,7 +1,7 @@
 // swift-tools-version:5.9
 import PackageDescription
 
-let firebaseSDKVersion: Version = "12.9.0"
+let firebaseSDKVersion: Version = "12.14.0"
 
 let package = Package(
     name: "cordova-plugin-firebasex-firestore",
