@@ -23,7 +23,7 @@
   "author": "Dave Alden",
   "license": "MIT",
   "dependencies": {
-    "cordova-plugin-firebasex-core": "^1.0.0"
+    "cordova-plugin-firebasex-core": "^2.0.0"
   },
   "devDependencies": {
     "xml-js": "^1.6.11"
