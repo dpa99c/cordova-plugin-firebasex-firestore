@@ -1,10 +1,13 @@
 {
   "name": "cordova-plugin-firebasex-firestore",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Firestore module for cordova-plugin-firebasex",
   "cordova": {
     "id": "cordova-plugin-firebasex-firestore",
-    "platforms": ["android", "ios"]
+    "platforms": [
+      "android",
+      "ios"
+    ]
   },
   "repository": {
     "type": "git",
@@ -19,7 +22,11 @@
       }
     }
   },
-  "keywords": ["cordova", "firebase", "firestore"],
+  "keywords": [
+    "cordova",
+    "firebase",
+    "firestore"
+  ],
   "author": "Dave Alden",
   "license": "MIT",
   "dependencies": {
