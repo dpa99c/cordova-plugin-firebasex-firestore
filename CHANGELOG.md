@@ -1,3 +1,6 @@
+# Version 2.0.3
+- (ios) bugfix: fix boolean filter values in `fetchFirestoreCollection`/`listenToFirestoreCollection` being evaluated incorrectly (always `true`) due to an incorrect `NSNumber`-to-`BOOL` conversion in `getFilterValueAsType:valueIndex:typeIndex:`.
+
 # Version 2.0.2
 - fix: pin core plugin dependency to v2
 
