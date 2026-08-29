@@ -190,7 +190,7 @@
 
     if ([type isEqual:@"boolean"]) {
         if ([typedValue isKindOfClass:[NSNumber class]]) {
-            typedValue = [NSNumber numberWithBool:typedValue];
+            typedValue = [NSNumber numberWithBool:[typedValue boolValue]];
         } else if ([typedValue isKindOfClass:[NSString class]]) {
             bool boolValue = [typedValue boolValue];
             typedValue = [NSNumber numberWithBool:boolValue];
