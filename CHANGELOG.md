@@ -1,3 +1,6 @@
+# Version 2.0.2
+- fix: pin core plugin dependency to v2
+
 # Version 2.0.1
 - (ios) bugfix: pin `cordova-plugin-firebasex-core@^2.0.0` to ensure SPM version is available for `cordova-ios@8+`.
 
