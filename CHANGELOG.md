@@ -1,3 +1,6 @@
+# Version 1.0.3
+- fix: pin core plugin dependency to v1
+
 # Version 1.0.1
 - Fix plugin metadata
 
