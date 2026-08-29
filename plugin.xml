@@ -15,7 +15,7 @@
         <engine name="cordova-ios" version=">=7.0.0" />
     </engines>
 
-    <dependency id="cordova-plugin-firebasex-core" />
+    <dependency id="cordova-plugin-firebasex-core" version="^2.0.0" />
 
     <preference name="IOS_USE_PRECOMPILED_FIRESTORE_POD" default="false" />
 
