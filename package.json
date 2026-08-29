@@ -22,6 +22,7 @@
   "keywords": ["cordova", "firebase", "firestore"],
   "author": "Dave Alden",
   "license": "MIT",
+  "types": "types/index.d.ts",
   "dependencies": {
     "cordova-plugin-firebasex-core": "^2.0.0"
   },
