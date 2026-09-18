@@ -1,3 +1,6 @@
+# Version 2.0.4
+feat: add `runTransactionOnFirestoreDocument` to atomically compare field conditions on an existing document and apply field-path updates when all conditions match.
+
 # Version 2.0.3
 - (ios) bugfix: fix boolean filter values in `fetchFirestoreCollection`/`listenToFirestoreCollection` being evaluated incorrectly (always `true`) due to an incorrect `NSNumber`-to-`BOOL` conversion in `getFilterValueAsType:valueIndex:typeIndex:`.
 
