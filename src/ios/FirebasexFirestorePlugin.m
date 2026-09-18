@@ -120,6 +120,98 @@
     return value;
 }
 
+/** Reads a nested field path and reports whether that path exists. */
+- (id)valueForFieldPath:(NSString *)fieldPath inDocument:(NSDictionary *)document exists:(BOOL *)exists {
+    id value = document;
+    *exists = YES;
+    for (NSString *component in [fieldPath componentsSeparatedByString:@"."]) {
+        if (![value isKindOfClass:[NSDictionary class]] || [(NSDictionary *)value objectForKey:component] == nil) {
+            *exists = NO;
+            return nil;
+        }
+        value = [(NSDictionary *)value objectForKey:component];
+    }
+    return value;
+}
+
+/** Compares JSON-compatible Firestore values, including nested dictionaries and arrays. */
+- (BOOL)firestoreValuesEqual:(id)actual expected:(id)expected {
+    if (actual == expected) {
+        return YES;
+    }
+    if (actual == nil || expected == nil) {
+        return NO;
+    }
+    if ([actual isKindOfClass:[NSNumber class]] && [expected isKindOfClass:[NSNumber class]]) {
+        if ([self isBoolNumber:actual] != [self isBoolNumber:expected]) {
+            return NO;
+        }
+        return [actual isEqualToNumber:expected];
+    }
+    if ([actual isKindOfClass:[NSDictionary class]] && [expected isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *actualDictionary = actual;
+        NSDictionary *expectedDictionary = expected;
+        if (actualDictionary.count != expectedDictionary.count) {
+            return NO;
+        }
+        for (id key in actualDictionary) {
+            if (![expectedDictionary objectForKey:key] ||
+                ![self firestoreValuesEqual:[actualDictionary objectForKey:key]
+                                     expected:[expectedDictionary objectForKey:key]]) {
+                return NO;
+            }
+        }
+        return YES;
+    }
+    if ([actual isKindOfClass:[NSArray class]] && [expected isKindOfClass:[NSArray class]]) {
+        NSArray *actualArray = actual;
+        NSArray *expectedArray = expected;
+        if (actualArray.count != expectedArray.count) {
+            return NO;
+        }
+        for (NSUInteger index = 0; index < actualArray.count; index++) {
+            if (![self firestoreValuesEqual:[actualArray objectAtIndex:index]
+                                     expected:[expectedArray objectAtIndex:index]]) {
+                return NO;
+            }
+        }
+        return YES;
+    }
+    return [actual isEqual:expected];
+}
+
+/** Checks all declarative field conditions against a Firestore document. */
+- (BOOL)conditionsMatch:(NSDictionary *)document conditions:(NSArray *)conditions {
+    for (NSDictionary *condition in conditions) {
+        if (![condition isKindOfClass:[NSDictionary class]]) {
+            return NO;
+        }
+        NSString *fieldPath = [condition objectForKey:@"path"];
+        if (![fieldPath isKindOfClass:[NSString class]] || fieldPath.length == 0) {
+            return NO;
+        }
+
+        BOOL actualExists = NO;
+        id actual = [self valueForFieldPath:fieldPath inDocument:document exists:&actualExists];
+        id existsValue = [condition objectForKey:@"exists"];
+        BOOL expectedExists = existsValue == nil ||
+            ([existsValue isKindOfClass:[NSNumber class]] && [existsValue boolValue]);
+        if (actualExists != expectedExists) {
+            return NO;
+        }
+        if (expectedExists && [condition objectForKey:@"value"] != nil &&
+            ![self firestoreValuesEqual:actual expected:[condition objectForKey:@"value"]]) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
+/** Creates the stable result dictionary returned by an atomic document transaction. */
+- (NSDictionary *)transactionResult:(NSString *)status {
+    return @{ @"status": status };
+}
+
 #pragma mark - Query filters
 
 /**
@@ -315,6 +407,52 @@
             } else {
                 [[FirebasexCorePlugin sharedInstance] sendPluginErrorWithMessage:@"Document not found in collection" :command];
             }
+        } @catch (NSException *exception) {
+            [[FirebasexCorePlugin sharedInstance] handlePluginExceptionWithContext:exception :command];
+        }
+    }];
+}
+
+/** Atomically compares field conditions and updates a Firestore document when they match. */
+- (void)runTransactionOnFirestoreDocument:(CDVInvokedUrlCommand *)command {
+    [self.commandDelegate runInBackground:^{
+        @try {
+            NSString *documentId = [command.arguments objectAtIndex:0];
+            NSArray *conditions = [command.arguments objectAtIndex:1];
+            NSDictionary *updates = [command.arguments objectAtIndex:2];
+            NSString *collection = [command.arguments objectAtIndex:3];
+            BOOL timestamp = [[command.arguments objectAtIndex:4] boolValue];
+            FIRDocumentReference *documentReference = [[self.firestore collectionWithPath:collection]
+                documentWithPath:documentId];
+
+            [self.firestore runTransactionWithBlock:^id _Nullable(FIRTransaction *transaction, NSError **error) {
+                FIRDocumentSnapshot *snapshot = [transaction getDocument:documentReference error:error];
+                if (error != nil && *error != nil) {
+                    return nil;
+                }
+                if (!snapshot.exists) {
+                    return [self transactionResult:@"missing"];
+                }
+                if (![self conditionsMatch:snapshot.data conditions:conditions]) {
+                    return [self transactionResult:@"conflict"];
+                }
+
+                NSMutableDictionary *transactionUpdates = [updates mutableCopy];
+                if (timestamp) {
+                    transactionUpdates[@"lastUpdate"] = [FIRTimestamp timestampWithDate:[NSDate date]];
+                }
+                [transaction updateData:transactionUpdates forDocument:documentReference];
+                return [self transactionResult:@"updated"];
+            } completion:^(id _Nullable result, NSError *_Nullable error) {
+                if (error != nil) {
+                    [[FirebasexCorePlugin sharedInstance] sendPluginErrorWithMessage:error.localizedDescription :command];
+                } else {
+                    [self.commandDelegate
+                        sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                                      messageAsDictionary:result]
+                              callbackId:command.callbackId];
+                }
+            }];
         } @catch (NSException *exception) {
             [[FirebasexCorePlugin sharedInstance] handlePluginExceptionWithContext:exception :command];
         }

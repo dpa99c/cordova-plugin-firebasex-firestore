@@ -21,6 +21,8 @@
 - (void)setDocumentInFirestoreCollection:(CDVInvokedUrlCommand *)command;
 /** Updates fields of an existing document. @param command args[0]: documentId, args[1]: document, args[2]: collection, args[3]: timestamp. */
 - (void)updateDocumentInFirestoreCollection:(CDVInvokedUrlCommand *)command;
+/** Atomically compares field conditions and updates a document. @param command args[0]: documentId, args[1]: conditions, args[2]: updates, args[3]: collection, args[4]: timestamp. */
+- (void)runTransactionOnFirestoreDocument:(CDVInvokedUrlCommand *)command;
 /** Deletes a document by ID. @param command args[0]: documentId, args[1]: collection. */
 - (void)deleteDocumentFromFirestoreCollection:(CDVInvokedUrlCommand *)command;
 /** Checks if a document exists. @param command args[0]: documentId, args[1]: collection. */

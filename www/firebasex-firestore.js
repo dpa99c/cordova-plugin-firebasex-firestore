@@ -40,7 +40,7 @@ exports.addDocumentToFirestoreCollection = function (document, collection, times
     if (typeof collection !== 'string') return error("'collection' must be a string specifying the Firestore collection name");
     if (typeof document !== 'object' || typeof document.length === 'number') return error("'document' must be an object specifying record data");
 
-    if (typeof timestamp !== "boolean" && typeof error === "undefined") {
+    if (typeof timestamp !== "boolean") {
         error = success;
         success = timestamp;
         timestamp = false;
@@ -96,6 +96,36 @@ exports.updateDocumentInFirestoreCollection = function (documentId, document, co
     }
 
     exec(success, error, SERVICE, "updateDocumentInFirestoreCollection", [documentId.toString(), document, collection, timestamp || false]);
+};
+
+/**
+ * Atomically compares fields on an existing document and updates it when all conditions match.
+ * Conditions use objects with a field path, an optional exists flag, and an optional value.
+ * Updates use Firestore field paths as keys, so nested fields can be changed without replacing
+ * unrelated data. The success callback receives {status: "updated"}, {status: "conflict"}, or
+ * {status: "missing"}.
+ *
+ * @param {string|number} documentId - The document identifier.
+ * @param {Array.<Object>} conditions - Field conditions to compare inside the transaction.
+ * @param {Object} updates - Field-path updates to apply when conditions match.
+ * @param {string} collection - The Firestore collection path.
+ * @param {boolean} [timestamp=false] - If true, updates the lastUpdate Timestamp field.
+ * @param {function} success - Called with the transaction result.
+ * @param {function} error - Called with an error message on failure.
+ */
+exports.runTransactionOnFirestoreDocument = function (documentId, conditions, updates, collection, timestamp, success, error) {
+    if (typeof documentId !== 'string' && typeof documentId !== 'number') return error("'documentId' must be a string or number specifying the Firestore document identifier");
+    if (!Array.isArray(conditions)) return error("'conditions' must be an array of field conditions");
+    if (typeof updates !== 'object' || updates === null || typeof updates.length === 'number') return error("'updates' must be an object specifying field-path updates");
+    if (typeof collection !== 'string') return error("'collection' must be a string specifying the Firestore collection name");
+
+    if (typeof timestamp !== "boolean" && typeof error === "undefined") {
+        error = success;
+        success = timestamp;
+        timestamp = false;
+    }
+
+    exec(success, error, SERVICE, "runTransactionOnFirestoreDocument", [documentId.toString(), conditions, updates, collection, timestamp || false]);
 };
 
 /**

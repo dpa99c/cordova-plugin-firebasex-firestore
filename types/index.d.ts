@@ -22,6 +22,23 @@ interface FirebasexFirestore {
         success: () => void,
         error: (err: string) => void
     ): void;
+    runTransactionOnFirestoreDocument(
+        documentId: string | number,
+        conditions: object[],
+        updates: object,
+        collection: string,
+        timestamp: boolean,
+        success: (result: { status: 'updated' | 'conflict' | 'missing' }) => void,
+        error: (err: string) => void
+    ): void;
+    runTransactionOnFirestoreDocument(
+        documentId: string | number,
+        conditions: object[],
+        updates: object,
+        collection: string,
+        success: (result: { status: 'updated' | 'conflict' | 'missing' }) => void,
+        error: (err: string) => void
+    ): void;
     deleteDocumentFromFirestoreCollection(
         documentId: string,
         collection: string,

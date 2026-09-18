@@ -14,6 +14,7 @@ This plugin wraps the [Firebase Firestore SDK](https://firebase.google.com/docs/
   - [addDocumentToFirestoreCollection](#adddocumenttofirestorecollection)
   - [setDocumentInFirestoreCollection](#setdocumentinfirestorecollection)
   - [updateDocumentInFirestoreCollection](#updatedocumentinfirestorecollection)
+    - [runTransactionOnFirestoreDocument](#runtransactiononfirestoredocument)
   - [deleteDocumentFromFirestoreCollection](#deletedocumentfromfirestorecollection)
   - [documentExistsInFirestoreCollection](#documentexistsinfirestorecollection)
   - [fetchDocumentInFirestoreCollection](#fetchdocumentinfirestorecollection)
@@ -227,6 +228,43 @@ FirebasexFirestore.updateDocumentInFirestoreCollection(
     },
     function (error) {
         console.error("Error updating document: " + error);
+    }
+);
+```
+
+## runTransactionOnFirestoreDocument
+
+Atomically compares field conditions on an existing document and applies field-path updates when
+all conditions match. The operation runs inside a native Firestore transaction, so concurrent
+claims cannot both pass the same preconditions. The success callback receives an object with a
+`status` of `updated`, `conflict`, or `missing`; Firestore and transport errors use the error
+callback.
+
+**Parameters**:
+
+-   {string} documentId - document ID of the document to compare and update.
+-   {object[]} conditions - conditions with `path`, optional `exists`, and optional `value` properties.
+-   {object} updates - field-path updates to apply without replacing unrelated document data.
+-   {string} collection - name of top-level collection containing the document.
+-   {boolean} timestamp (optional) - Add `lastUpdate` to the update. Default `false`.
+-   {function} success (optional) - callback receiving `{status: "updated"|"conflict"|"missing"}`.
+-   {function} error (optional) - callback which will be passed a {string} error message.
+
+```javascript
+FirebasexFirestore.runTransactionOnFirestoreDocument(
+    "my_doc",
+    [
+        {path: "some_property", exists: false}
+    ],
+    {"id": [{id: "new-id", timestamp: new Date().toISOString()}]},
+    "my_collection",
+    function (result) {
+        if (result.status === "updated") {
+            console.log("Document updated atomically");
+        }
+    },
+    function (error) {
+        console.error("Error running transaction: " + error);
     }
 );
 ```

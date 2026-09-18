@@ -23,6 +23,7 @@ import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.Query.Direction;
+import com.google.firebase.firestore.Transaction;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -36,6 +37,7 @@ import org.json.JSONObject;
 import java.lang.reflect.Type;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -75,7 +77,8 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
      * Dispatches Cordova actions to plugin methods.
      *
      * <p>Supported actions: addDocumentToFirestoreCollection, setDocumentInFirestoreCollection,
-     * updateDocumentInFirestoreCollection, deleteDocumentFromFirestoreCollection,
+    * updateDocumentInFirestoreCollection, deleteDocumentFromFirestoreCollection,
+    * runTransactionOnFirestoreDocument,
      * documentExistsInFirestoreCollection, fetchDocumentInFirestoreCollection,
      * fetchFirestoreCollection, listenToDocumentInFirestoreCollection,
      * listenToFirestoreCollection, removeFirestoreListener.
@@ -91,6 +94,9 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
                 return true;
             case "updateDocumentInFirestoreCollection":
                 this.updateDocumentInFirestoreCollection(args, callbackContext);
+                return true;
+            case "runTransactionOnFirestoreDocument":
+                this.runTransactionOnFirestoreDocument(args, callbackContext);
                 return true;
             case "deleteDocumentFromFirestoreCollection":
                 this.deleteDocumentFromFirestoreCollection(args, callbackContext);
@@ -142,6 +148,80 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
     private Map<String, Object> jsonStringToMap(String jsonString) throws JSONException {
         Type type = new TypeToken<Map<String, Object>>() {}.getType();
         return gson.fromJson(jsonString, type);
+    }
+
+    /** Deserialises a JSON array of field conditions into maps. */
+    private List<Map<String, Object>> jsonStringToConditions(String jsonString) throws JSONException {
+        Type type = new TypeToken<List<Map<String, Object>>>() {}.getType();
+        return gson.fromJson(jsonString, type);
+    }
+
+    /** Marker returned when a field path does not exist in a document. */
+    private static final Object MISSING_FIELD = new Object();
+
+    /** Reads a nested field path from a Firestore document map. */
+    private Object getValueForFieldPath(Map<String, Object> document, String fieldPath) {
+        Object value = document;
+        String[] path = fieldPath.split("\\.");
+        for (String component : path) {
+            if (!(value instanceof Map) || !((Map<?, ?>) value).containsKey(component)) {
+                return MISSING_FIELD;
+            }
+            value = ((Map<?, ?>) value).get(component);
+        }
+        return value;
+    }
+
+    /** Compares JSON-compatible Firestore values without depending on numeric runtime types. */
+    private boolean firestoreValuesEqual(Object actual, Object expected) {
+        if (actual == expected) return true;
+        if (actual == null || expected == null) return false;
+        if (actual instanceof Number && expected instanceof Number) {
+            return Double.compare(((Number) actual).doubleValue(), ((Number) expected).doubleValue()) == 0;
+        }
+        if (actual instanceof Map && expected instanceof Map) {
+            Map<?, ?> actualMap = (Map<?, ?>) actual;
+            Map<?, ?> expectedMap = (Map<?, ?>) expected;
+            if (!actualMap.keySet().equals(expectedMap.keySet())) return false;
+            for (Object key : actualMap.keySet()) {
+                if (!firestoreValuesEqual(actualMap.get(key), expectedMap.get(key))) return false;
+            }
+            return true;
+        }
+        if (actual instanceof List && expected instanceof List) {
+            List<?> actualList = (List<?>) actual;
+            List<?> expectedList = (List<?>) expected;
+            if (actualList.size() != expectedList.size()) return false;
+            for (int i = 0; i < actualList.size(); i++) {
+                if (!firestoreValuesEqual(actualList.get(i), expectedList.get(i))) return false;
+            }
+            return true;
+        }
+        return actual.equals(expected);
+    }
+
+    /** Checks all declarative field conditions against a Firestore document. */
+    private boolean conditionsMatch(Map<String, Object> document, List<Map<String, Object>> conditions) {
+        for (Map<String, Object> condition : conditions) {
+            String fieldPath = (String) condition.get("path");
+            if (fieldPath == null || fieldPath.length() == 0) return false;
+
+            Object actual = getValueForFieldPath(document, fieldPath);
+            boolean actualExists = actual != MISSING_FIELD;
+            boolean expectedExists = !condition.containsKey("exists") || Boolean.TRUE.equals(condition.get("exists"));
+            if (actualExists != expectedExists) return false;
+            if (expectedExists && condition.containsKey("value") && !firestoreValuesEqual(actual, condition.get("value"))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Creates the stable result returned by an atomic document transaction. */
+    private Map<String, Object> transactionResult(String status) {
+        Map<String, Object> result = new HashMap<String, Object>();
+        result.put("status", status);
+        return result;
     }
 
     /** Sanitises a Firestore data map and converts it to a JSONObject. */
@@ -423,6 +503,55 @@ public class FirebasexFirestorePlugin extends CordovaPlugin {
                                     FirebasexCorePlugin.handleExceptionWithContext(e, callbackContext);
                                 }
                             });
+                } catch (Exception e) {
+                    FirebasexCorePlugin.handleExceptionWithContext(e, callbackContext);
+                }
+            }
+        });
+    }
+
+    /** Atomically compares field conditions and updates a Firestore document when they match. */
+    private void runTransactionOnFirestoreDocument(JSONArray args, CallbackContext callbackContext) throws JSONException {
+        cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                try {
+                    String documentId = args.getString(0);
+                    List<Map<String, Object>> conditions = jsonStringToConditions(args.getString(1));
+                    Map<String, Object> updates = jsonStringToMap(args.getString(2));
+                    String collection = args.getString(3);
+                    boolean timestamp = args.getBoolean(4);
+                    DocumentReference documentReference = firestore.collection(collection).document(documentId);
+
+                    firestore.runTransaction(new Transaction.Function<Map<String, Object>>() {
+                        @Override
+                        public Map<String, Object> apply(@NonNull Transaction transaction) throws FirebaseFirestoreException {
+                            DocumentSnapshot snapshot = transaction.get(documentReference);
+                            if (!snapshot.exists()) return transactionResult("missing");
+                            Map<String, Object> document = snapshot.getData();
+                            if (document == null || !conditionsMatch(document, conditions)) {
+                                return transactionResult("conflict");
+                            }
+
+                            Map<String, Object> transactionUpdates = new HashMap<String, Object>(updates);
+                            if (timestamp) transactionUpdates.put("lastUpdate", new Timestamp(new Date()));
+                            transaction.update(documentReference, transactionUpdates);
+                            return transactionResult("updated");
+                        }
+                    }).addOnSuccessListener(new OnSuccessListener<Map<String, Object>>() {
+                        @Override
+                        public void onSuccess(Map<String, Object> result) {
+                            try {
+                                callbackContext.success(new JSONObject(result));
+                            } catch (Exception e) {
+                                FirebasexCorePlugin.handleExceptionWithContext(e, callbackContext);
+                            }
+                        }
+                    }).addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(@NonNull Exception e) {
+                            FirebasexCorePlugin.handleExceptionWithContext(e, callbackContext);
+                        }
+                    });
                 } catch (Exception e) {
                     FirebasexCorePlugin.handleExceptionWithContext(e, callbackContext);
                 }
