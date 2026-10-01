@@ -1,3 +1,7 @@
+# Version 2.0.5
+- (ios) fix: apply `IOS_FIREBASE_SDK_VERSION` to both installed and generated Swift package manifests.
+	- Resolves https://github.com/dpa99c/cordova-plugin-firebasex/issues/977
+
 # Version 2.0.4
 feat: add `runTransactionOnFirestoreDocument` to atomically compare field conditions on an existing document and apply field-path updates when all conditions match.
 
