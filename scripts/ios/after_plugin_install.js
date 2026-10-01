@@ -105,11 +105,19 @@ function resolvePluginVariables(context) {
 function getPackageSwiftPaths(context) {
     var paths = [
         path.resolve(__dirname, "..", "..", "Package.swift"),
-        path.join(context.opts.projectRoot, "plugins", PLUGIN_ID, "Package.swift")
+        path.join(context.opts.projectRoot, "plugins", PLUGIN_ID, "Package.swift"),
+        path.join(context.opts.projectRoot, "platforms", "ios", "packages", PLUGIN_ID, "Package.swift")
     ];
 
-    return paths.filter(function(packageSwiftPath, index) {
-        return fs.existsSync(packageSwiftPath) && paths.indexOf(packageSwiftPath) === index;
+    var seen = {};
+    return paths.filter(function(packageSwiftPath) {
+        if (seen[packageSwiftPath]) return false;
+        seen[packageSwiftPath] = true;
+        if (!fs.existsSync(packageSwiftPath)) {
+            console.warn("[FirebasexFirestore] Package.swift not found at " + packageSwiftPath + ". Cannot update the Firebase SDK version in this copy.");
+            return false;
+        }
+        return true;
     });
 }
 
@@ -150,6 +158,7 @@ module.exports = function(context) {
             var result = rewritePackageSwiftValue(packageSwiftContents, "firebaseSDKVersion", pluginVariables["IOS_FIREBASE_SDK_VERSION"]);
             if (result.modified) {
                 fs.writeFileSync(packageSwiftPath, result.contents);
+                console.log("[FirebasexFirestore] Updated Swift package manifest at " + packageSwiftPath);
             }
         });
         return;
